@@ -1,0 +1,59 @@
+function [] = functionTest()
+%FUNCTIONTEST Summary of this function goes here
+%   Detailed explanation goes here
+
+gammaAlpha = (logspace(0,5) - 1) / 1e4;
+gammaAlpha = [- gammaAlpha(end:-1:1), gammaAlpha];
+
+options = optimoptions('fmincon');
+options.Algorithm = 'interior-point';
+options.Display = 'none';
+options.DiffMinChange = 1e-12;
+options.DiffMaxChange = 1e-2;
+options.TolFun = 1e-8;
+options.TolX = 1e-8;
+options.UseParallel = false;
+
+Problem.options = options;
+Problem.solver = 'fmincon';
+Problem.x0 = [0.005, 0.003];
+Problem.lb = [1e-6,   1e-6];
+Problem.ub = [1-1e-6, 1e-1];
+Problem.objective = @(para) sum((piTanH(gammaAlpha) - piBardella(gammaAlpha, para(1), para(2))).^4);
+
+optPara = fmincon(Problem);
+disp(optPara);
+
+close all;
+figure;
+plot(gammaAlpha, piTanH(gammaAlpha));
+hold on;
+% plot(gammaAlpha, piBardella(gammaAlpha));
+plot(gammaAlpha, piBardella(gammaAlpha, optPara(1), optPara(2)), '*');
+legend('tanH', 'Bardella');
+end
+
+function pi=piTanH(gammaAlpha)
+pi0 = 50;
+gamma0Dot = 0.01;
+
+pi = pi0 * tanh(gammaAlpha / gamma0Dot);
+end
+
+function pi=piBardella(gammaAlpha, p, gamma0Dot)
+pi0 = 50;
+if nargin < 2
+    p = 0.05;
+end
+if nargin < 3
+    gamma0Dot = 0.01 / 3;
+end
+
+pi = zeros(size(gammaAlpha));
+indicesLin = abs(gammaAlpha) < gamma0Dot;
+pi(indicesLin) = pi0 * gammaAlpha(indicesLin) / 2 / gamma0Dot;
+
+pi(~indicesLin) = sign(gammaAlpha(~indicesLin)) .* (pi0 * 1 / 2 / (p - 1) *...
+    ( p - 2 + (abs(gammaAlpha(~indicesLin)) / gamma0Dot).^(p-1)));
+
+end
